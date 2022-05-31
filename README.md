@@ -1,6 +1,7 @@
 # fapberries
 
 requirements:
+- python >= 3.7
 - tensorflow
 - rich
 - nsfw_detector (included)
