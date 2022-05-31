@@ -1,4 +1,4 @@
-import requests, os # pip install 
+import requests, os
 from rich import print
 from nsfw_detector import predict
 from pathlib import Path
