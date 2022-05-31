@@ -5,7 +5,5 @@ requirements:
 - tensorflow
 - requests
 - rich
-- [
-1](https://github.com/GantMan/nsfw_model/tree/master/nsfw_detector)
-- nsfw_detector](included)
+- [nsfw_detector](https://github.com/GantMan/nsfw_model/tree/master/nsfw_detector) (included)
 - (https://github.com/GantMan/nsfw_model/tree/master/nsfw_detector).2.0 (included)
