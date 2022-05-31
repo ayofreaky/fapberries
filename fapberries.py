@@ -57,4 +57,3 @@ for itemId in itemIds:
                     os.remove(result)
         else:
             Path.rmdir(f'Downloads\\{itemId}', ignore_errors=True)
-            # os.rmdir(f'Downloads\\{itemId}')
