@@ -23,9 +23,9 @@ for product in r['data']['products']:
         print(f'Товар: {product["imt_name"]} | imtId: {itemId}')
         payload = {'imtId': itemId, 'skip': 0, 'take': 20}
         product = requests.post('https://public-feedbacks.wildberries.ru/api/v1/summary/full', headers=headers, json=payload).json()
-        feedbackWithPhotoCount = product['feedbackCountWithPhoto']
+        feedbackCountWithPhoto = product['feedbackCountWithPhoto']
 
-        print(f'Количество отзывов с фотографиями: {feedbackWithPhotoCount}')
+        print(f'Количество отзывов с фотографиями: {feedbackCountWithPhoto}')
         for offset in range(0, product['feedbackCountWithPhoto'], 20):
             payload = { 'imtId': itemId,
                         'skip': offset,
@@ -40,7 +40,7 @@ for product in r['data']['products']:
                     userId = feedback['wbUserId']
                     username = feedback['wbUserDetails']['name']
                     i += 1
-                    print(f"\n{'-'*99}\n[{i}/{feedbackWithPhotoCount}] {username}:\n{feedback['text']}")
+                    print(f"\n{'-'*99}\n[{i}/{feedbackCountWithPhoto}] {username}:\n{feedback['text']}")
                     for photo in feedback['photos']:
                         photoUrl = f"https://feedbackphotos.wbstatic.net/{photo['fullSizeUri']}"
                         with open(f"Downloads/{itemId}/{itemId}_{username}_{userId}_{photo['fullSizeUri'].split('/')[-1]}", 'wb') as f:
