@@ -1,4 +1,4 @@
-import requests, os, random, sys
+import requests, os
 from rich import print
 from nsfw_detector import predict
 from pathlib import Path
@@ -69,4 +69,4 @@ for product in r['data']['products']:
                 archive.write(f'{itemId}\n')
 
     else:
-        print(f'Товар уже в архиве')
+        print('Товар уже в архиве')
