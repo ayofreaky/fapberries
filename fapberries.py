@@ -1,4 +1,4 @@
-import requests, os
+import requests, os, random, sys
 from rich import print
 from nsfw_detector import predict
 from pathlib import Path
@@ -9,45 +9,51 @@ headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit
 pornMin = 0.80
 sexyMin = 0.80
 
-with open('items.txt', 'r') as f:
-    itemIds = f.read().split('\n')
-    print(f'[~] Товаров:', len(itemIds))
+page = 1
+mainCategory = 'women_underwear1' # 'women_underwear2'
+r = requests.get(f'https://catalog.wb.ru/catalog/{mainCategory}/catalog?kind=2&locale=ru&page={page}&sort=popular', headers=headers).json()
+for product in r['data']['products']:
+    with open('archive.txt', 'r') as archive:
+        archive = archive.read().splitlines()
 
-for itemId in itemIds:
-    print(f'Парсим imtId по nmId {itemId}')
-    r = requests.get(f'https://wbx-content-v2.wbstatic.net/ru/{itemId}.json').json()
-    itemId = r['imt_id']
-    print(f'Получили itemId: {itemId}')
+    product = requests.get(f'https://wbx-content-v2.wbstatic.net/ru/{product["id"]}.json', headers=headers).json()
+    itemId = product['imt_id']
+    if itemId not in archive:
+        i = 0
+        print(f'Товар: {product["imt_name"]} | imtId: {itemId}')
+        payload = {'imtId': itemId, 'skip': 0, 'take': 20}
+        product = requests.post('https://public-feedbacks.wildberries.ru/api/v1/summary/full', headers=headers, json=payload).json()
+        feedbackWithPhotoCount = product['feedbackCountWithPhoto']
 
-    payload = {'imtId': itemId, 'skip': 0, 'take': 20}
-    r = requests.post('https://public-feedbacks.wildberries.ru/api/v1/summary/full', headers=headers, json=payload).json()
+        print(f'Количество отзывов с фотографиями: {feedbackWithPhotoCount}')
+        for offset in range(0, product['feedbackCountWithPhoto'], 20):
+            payload = { 'imtId': itemId,
+                        'skip': offset,
+                        'take': 20,
+                        'order': 'dateDesc',
+                        'hasPhoto': True}
 
-    print(f"Количество отзывов с фотографиями: {r['feedbackCountWithPhoto']}")
-    for offset in range(0, r['feedbackCountWithPhoto'], 20):
-        payload = { 'imtId': itemId,
-                    'skip': offset,
-                    'take': 20,
-                    'order': 'dateDesc',
-                    'hasPhoto': True}
+            product = requests.post('https://public-feedbacks.wildberries.ru/api/v1/feedbacks/site', headers=headers, json=payload).json()
+            if len(product['feedbacks']) > 0:
+                for feedback in product['feedbacks']:
+                    Path(f'Downloads/{itemId}').mkdir(parents=True, exist_ok=True)
+                    userId = feedback['wbUserId']
+                    username = feedback['wbUserDetails']['name']
+                    i += 1
+                    print(f"\n{'-'*99}\n[{i}/{feedbackWithPhotoCount}] {username}:\n{feedback['text']}")
+                    for photo in feedback['photos']:
+                        photoUrl = f"https://feedbackphotos.wbstatic.net/{photo['fullSizeUri']}"
+                        with open(f"Downloads/{itemId}/{itemId}_{username}_{userId}_{photo['fullSizeUri'].split('/')[-1]}", 'wb') as f:
+                            f.write(requests.get(photoUrl).content)
+                        print(f'{photoUrl}')
+            else:
+                with open('archive.txt', 'a') as archive:
+                    archive.write(f'{itemId}\n')
+                break
 
-        r = requests.post('https://public-feedbacks.wildberries.ru/api/v1/feedbacks/site', headers=headers, json=payload).json()
-        if len(r['feedbacks']) > 0:
-            for feedback in r['feedbacks']:
-                Path(f'Downloads\\{itemId}').mkdir(parents=True, exist_ok=True)
-                userId = feedback['wbUserId']
-                username = feedback['wbUserDetails']['name']
-                print(f"\n{'-'*99}\n{username}:\n{feedback['text']}\n{'-'*99}")
-                for photo in feedback['photos']:
-                    photoUrl = f"https://feedbackphotos.wbstatic.net/{photo['fullSizeUri']}"
-                    filename = photoUrl
-                    with open(f"Downloads\{itemId}\{itemId}_{username}_{userId}_{photo['fullSizeUri'].split('/')[-1]}", 'wb') as f:
-                        f.write(requests.get(photoUrl).content)
-                    print(f"{photoUrl}")
-        else:
-            break
-        if len(os.listdir(f'Downloads\\{itemId}')) > 0:
+        if len(os.listdir(f'Downloads/{itemId}')) > 0:
             print(f'[green]Скачали {len(os.listdir(f"Downloads/{itemId}"))} пикч[/green]')
-            pred = predict.classify(model, f'Downloads\\{itemId}')
+            pred = predict.classify(model, f'Downloads/{itemId}')
             for result in pred:
                 porn, sexy = round(pred[result]['porn'], 2), round(pred[result]['sexy'], 2)
                 if porn >= pornMin <= 1.00 or sexy >= sexyMin <= 1.00:
@@ -55,5 +61,12 @@ for itemId in itemIds:
                 else:
                     print(f'\n[red]{os.path.basename(result)}:\nУдаляем пикчу.. | porn: {porn}, sexy: {sexy}[/red]')
                     os.remove(result)
+
         else:
-            Path.rmdir(f'Downloads\\{itemId}', ignore_errors=True)
+            Path.rmdir(f'Downloads/{itemId}', ignore_errors=True)
+
+        with open('archive.txt', 'a') as archive:
+                archive.write(f'{itemId}\n')
+
+    else:
+        print(f'Товар уже в архиве')
